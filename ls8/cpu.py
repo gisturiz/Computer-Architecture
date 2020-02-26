@@ -15,26 +15,37 @@ class CPU:
     def ram_read(self, MAR):
         return self.ram[MAR]
 
-    def load(self):
+    def load(self, filename):
         """Load a program into memory."""
 
-        address = 0
+        try:
+            address = 0
 
-        # For now, we've just hardcoded a program:
+            # Open file
+            with open(filename) as f:
+                # Read all the lines
+                for line in f:
+                    # Parse out comments
+                    comment_split = line.strip().split("#")
 
-        program = [
-            # From print8.ls8
-            0b10000010,  # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111,  # PRN R0
-            0b00000000,
-            0b00000001,  # HLT
-        ]
+                    # Cast the numbers from strings to ints
+                    value = comment_split[0].strip()
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+                    # Ignore blank lines
+                    if value == "":
+                        continue
+
+                    num = int(value, 2)
+                    self.ram[address] = num
+                    address += 1
+
+        except FileNotFoundError:
+            print("File not found")
+            sys.exit(2)
+
+    if len(sys.argv) != 2:
+        print("Error: Must have file name")
+        sys.exit(1)
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -42,6 +53,9 @@ class CPU:
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         # elif op == "SUB": etc
+        elif op == "MUL":
+            print(self.reg[reg_a], self.reg[reg_b])
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -67,24 +81,35 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        ir = self.pc
+        ir = self.ram[self.pc]
 
-        operand_a = self.ram_read(ir + 1)  # register
-        operand_b = self.ram_read(ir + 2)  # number
-
+        operand_a = self.ram_read(self.pc + 1)  # register
+        operand_b = self.ram_read(self.pc + 2)  # number
+        
         while True:
-            command = self.ram[ir]
+            command = self.ram[self.pc]
 
-            if command == 0b10000010:
+            LDI = 0b10000010
+            MUL = 0b10100010
+            PRN = 0b01000111
+            HLT = 0b00000001
+
+            if command == LDI:
                 register = operand_a
                 num = operand_b
                 self.reg[register] = num
-                ir += 3
-            elif command == 0b01000111:
+                self.pc += 3
+            elif command == MUL:
+                reg1 = operand_a
+                reg2 = operand_b
+                print(reg1, reg2)
+                self.alu("MUL", reg1, reg2)
+                self.pc += 3
+            elif command == PRN:
                 register = operand_a
                 print(self.reg[register])
-                ir += 2
-            elif command == 0b00000001:
+                self.pc += 2
+            elif command == HLT:
                 sys.exit(0)
             else:
                 print(f"I did not understand that command: {command}")

@@ -81,36 +81,34 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        ir = self.ram[self.pc]
-
-        operand_a = self.ram_read(self.pc + 1)  # register
-        operand_b = self.ram_read(self.pc + 2)  # number
         
         while True:
-            command = self.ram[self.pc]
+            IR = self.ram[self.pc]
+
+            operand_a = self.ram_read(self.pc + 1)  # register
+            operand_b = self.ram_read(self.pc + 2)  # number
 
             LDI = 0b10000010
             MUL = 0b10100010
             PRN = 0b01000111
             HLT = 0b00000001
 
-            if command == LDI:
+            if IR == LDI:
                 register = operand_a
                 num = operand_b
                 self.reg[register] = num
                 self.pc += 3
-            elif command == MUL:
+            elif IR == MUL:
                 reg1 = operand_a
                 reg2 = operand_b
-                print(reg1, reg2)
                 self.alu("MUL", reg1, reg2)
                 self.pc += 3
-            elif command == PRN:
+            elif IR == PRN:
                 register = operand_a
                 print(self.reg[register])
                 self.pc += 2
-            elif command == HLT:
+            elif IR == HLT:
                 sys.exit(0)
             else:
-                print(f"I did not understand that command: {command}")
+                print(f"I did not understand that command: {IR}")
                 sys.exit(1)

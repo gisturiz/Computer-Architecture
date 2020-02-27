@@ -2,7 +2,15 @@
 
 import sys
 
-
+LDI = 0b10000010
+PRN = 0b01000111
+HLT = 0b00000001
+ADD = 0b10100000
+SUB = 0b10100001
+MUL = 0b10100010
+DIV = 0b10100011
+PUSH = 0b01000101
+POP = 0b01000110
 class CPU:
     """Main CPU class."""
 
@@ -11,9 +19,13 @@ class CPU:
         self.ram = [0] * 256
         self.reg = [0] * 8
         self.pc = 0
+        self.SP = 7
 
     def ram_read(self, MAR):
         return self.ram[MAR]
+    
+    def ran_write(self, MAR, MDR):
+        self.ram[MAR] = MDR
 
     def load(self, filename):
         """Load a program into memory."""
@@ -50,12 +62,14 @@ class CPU:
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
-        if op == "ADD":
+        if op == ADD:
             self.reg[reg_a] += self.reg[reg_b]
-        # elif op == "SUB": etc
-        elif op == "MUL":
-            print(self.reg[reg_a], self.reg[reg_b])
+        elif op == SUB:
+            self.reg[reg_a] -= self.reg[reg_b]
+        elif op == MUL:
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == DIV:
+            self.reg[reg_a] /= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -98,11 +112,24 @@ class CPU:
                 num = operand_b
                 self.reg[register] = num
                 self.pc += 3
-            elif IR == MUL:
+            elif IR == MUL or IR == ADD:
+                op = IR
                 reg1 = operand_a
                 reg2 = operand_b
-                self.alu("MUL", reg1, reg2)
+                self.alu(op, reg1, reg2)
                 self.pc += 3
+            elif IR == PUSH:
+                register = operand_a
+                val = self.reg[register]
+                self.reg[self.SP] -= 1
+                self.ram[self.reg[self.SP]] = val
+                self.pc += 2
+            elif IR == POP:
+                register = operand_a
+                val = self.ram[self.reg[self.SP]]
+                self.reg[register] = val
+                self.reg[self.SP] += 1
+                self.pc += 2
             elif IR == PRN:
                 register = operand_a
                 print(self.reg[register])
@@ -112,3 +139,59 @@ class CPU:
             else:
                 print(f"I did not understand that command: {IR}")
                 sys.exit(1)
+        
+        self.trace()
+
+class BranchTable(CPU):
+    def __init__(self):
+        super().__init__()
+        self.branchtable = {}
+        self.branchtable[LDI] = self.handle_ldi
+        self.branchtable[MUL] = self.handle_mul
+        self.branchtable[PRN] = self.handle_prn
+        self.branchtable[HLT] = self.handle_hlt
+    
+    def handle_ldi(self, a , b):
+        # self.operand_a = a
+        # self.operand_b = b
+        self.reg[a] = b
+        self.pc += 3
+
+    def handle_mul(self, a, b):
+        # self.operand_a = a
+        # self.operand_b = b
+        self.alu("MUL", a, b)
+        self.pc += 3
+
+    def handle_prn(self, a):
+        # self.operand_a = a
+        print(self.reg[a])
+        self.pc += 2
+
+    def handle_hlt(self):
+        sys.exit(0)
+
+    def run(self):
+
+        IR = LDI
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+        self.branchtable[IR](operand_a, operand_b)
+
+        self.trace()
+
+        IR = MUL
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+        self.branchtable[IR](operand_a, operand_b)
+
+        self.trace()
+
+        IR = PRN
+        operand_a = self.ram_read(self.pc + 1)
+        self.branchtable[IR](operand_a)
+
+        self.trace()
+
+        IR = HLT
+        self.branchtable[IR]

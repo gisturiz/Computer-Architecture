@@ -11,6 +11,8 @@ MUL = 0b10100010
 DIV = 0b10100011
 PUSH = 0b01000101
 POP = 0b01000110
+CALL = 0b01010000
+RET = 0b00010001
 class CPU:
     """Main CPU class."""
 
@@ -130,6 +132,14 @@ class CPU:
                 self.reg[register] = val
                 self.reg[self.SP] += 1
                 self.pc += 2
+            elif IR == CALL:
+                self.reg[self.SP] -= 1
+                self.ram[self.reg[self.SP]] = self.pc + 2
+                register = operand_a
+                self.pc = self.reg[register]
+            elif IR == RET:
+                self.pc = self.ram[self.reg[self.SP]]
+                self.reg[self.SP] += 1
             elif IR == PRN:
                 register = operand_a
                 print(self.reg[register])
